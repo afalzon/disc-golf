@@ -1,0 +1,14 @@
+services:
+  disc-golf:
+    image: ${DISC_GOLF_IMAGE:-ghcr.io/aaronfalzon/disc-golf:latest}
+    container_name: disc-golf
+    environment:
+      - DATA_DIR=/app/data
+    ports:
+      - "8080:8080"
+    volumes:
+      - disc-golf-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  disc-golf-data:
