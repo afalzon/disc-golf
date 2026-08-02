@@ -24,15 +24,24 @@ jobs:
       - name: Set lowercase image name
         run: echo "IMAGE_NAME_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/disc-golf" >> "$GITHUB_ENV"
 
-      - name: Determine image tag
-        id: tag
+      - name: Determine image tags
+        id: tags
         run: |
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            echo "tag=main" >> "$GITHUB_OUTPUT"
-            echo "extra_tag=latest" >> "$GITHUB_OUTPUT"
+            {
+              echo "tags<<EOF"
+              echo "${REGISTRY}/${IMAGE_NAME_LOWER}:main"
+              echo "${REGISTRY}/${IMAGE_NAME_LOWER}:latest"
+              echo "${REGISTRY}/${IMAGE_NAME_LOWER}:${GITHUB_SHA}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
           else
-            echo "tag=dev" >> "$GITHUB_OUTPUT"
-            echo "extra_tag=" >> "$GITHUB_OUTPUT"
+            {
+              echo "tags<<EOF"
+              echo "${REGISTRY}/${IMAGE_NAME_LOWER}:dev"
+              echo "${REGISTRY}/${IMAGE_NAME_LOWER}:${GITHUB_SHA}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
           fi
 
       - name: Log in to GHCR
@@ -48,7 +57,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ steps.tag.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ steps.tag.outputs.extra_tag }}
+          tags: ${{ steps.tags.outputs.tags }}
