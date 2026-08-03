@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet'
 import QRCode from 'qrcode-svg'
 import { pinIcon, poiIconForKind, teeIcon } from '../lib/mapIcons'
+import { resolvePublicOrigin } from '../lib/publicOrigin'
 import { findCourse, saveCourse } from '../lib/storage'
 import type { Course, LatLng, Poi, PoiKind } from '../types/course'
 
@@ -460,9 +461,10 @@ export const AdminPage = () => {
     setMarkMode((current) => (current === mode ? 'none' : mode))
   }
 
-  const buildHoleUrl = (holeId: number) => {
+  const buildHoleUrl = async (holeId: number) => {
     const holePath = `/course/${course.id}?hole=${String(holeId)}`
-    return new URL(holePath, window.location.origin).toString()
+    const origin = await resolvePublicOrigin()
+    return new URL(holePath, origin).toString()
   }
 
   const makeQrFileName = (holeId: number, holeName: string) => {
@@ -471,13 +473,13 @@ export const AdminPage = () => {
     return `${safeCourse}-${safeHole}-qr.svg`
   }
 
-  const generateHoleQr = () => {
+  const generateHoleQr = async () => {
     if (!activeHole) {
       setStatus('Select a hole first')
       return
     }
 
-    const target = buildHoleUrl(activeHole.id)
+    const target = await buildHoleUrl(activeHole.id)
     const qr = new QRCode({
       content: target,
       width: 1400,
@@ -886,7 +888,8 @@ export const AdminPage = () => {
                 <p className="eyebrow">Hole QR target</p>
                 <input
                   readOnly
-                  value={holeQrTarget || buildHoleUrl(activeHole.id)}
+                  value={holeQrTarget}
+                  placeholder="Generate a QR code to create the deep link"
                   aria-label="Hole deep link URL"
                 />
                 <div className="admin-qr-actions">

@@ -63,6 +63,12 @@ Compose persistence note:
 - Rebuild/restart keeps data (`docker compose up --build -d`).
 - Data is removed only if you remove the volume (for example `docker compose down -v` or `docker volume rm`).
 
+Public URL note:
+
+- Set `PUBLIC_BASE_URL` when you want generated QR/share links to use a fixed hostname.
+- Example: `PUBLIC_BASE_URL=https://golf.yourit.online`
+- If unset, the app uses the current browser origin.
+
 Then open http://localhost:8080.
 
 Container files:
