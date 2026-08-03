@@ -12,6 +12,24 @@ const dataDir = process.env.DATA_DIR || path.join(rootDir, 'data')
 const dataFile = path.join(dataDir, 'app-db.sqlite')
 const port = Number(process.env.PORT || 8080)
 
+const normalizePublicOrigin = (value) => {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(trimmed)
+    return parsed.origin
+  } catch {
+    return null
+  }
+}
+
 const app = express()
 app.use(express.json({ limit: '2mb' }))
 
@@ -135,6 +153,10 @@ app.use('/api', (_req, res, next) => {
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
+})
+
+app.get('/api/public-origin', (_req, res) => {
+  res.json({ publicOrigin: normalizePublicOrigin(process.env.PUBLIC_BASE_URL) })
 })
 
 app.get('/api/default-course', async (_req, res) => {

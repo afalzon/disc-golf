@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
+import { resolvePublicOrigin } from '../lib/publicOrigin'
 import { findCourse } from '../lib/storage'
 import { deleteRound, loadRound, saveRound, saveRoundScore } from '../lib/roundStorage'
 import { validateName } from '../lib/nameFilter'
@@ -49,7 +50,8 @@ export const RoundPage = () => {
       setCourseMissing(false)
       setRound(nextRound)
       setCourse(nextCourse)
-      setShareCode(`${window.location.origin}/round/${nextRound.id}`)
+      const origin = await resolvePublicOrigin()
+      setShareCode(`${origin}/round/${nextRound.id}`)
     }
 
     void load()
