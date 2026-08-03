@@ -1,6 +1,6 @@
 services:
   disc-golf:
-    image: ${DISC_GOLF_IMAGE:-ghcr.io/aaronfalzon/disc-golf:latest}
+    image: ${DISC_GOLF_IMAGE:-ghcr.io/afalzon/disc-golf:latest}
     container_name: disc-golf
     environment:
       - DATA_DIR=/app/data
