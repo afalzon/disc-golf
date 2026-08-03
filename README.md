@@ -30,6 +30,12 @@ npm run dev
 
 `npm run dev` now starts both the Vite frontend and the local API server.
 
+PWA install behavior:
+
+- Production builds enable PWA install/offline support by default.
+- Local dev keeps PWA disabled unless you explicitly set `VITE_ENABLE_PWA=true`.
+- You can force-disable in production with `VITE_ENABLE_PWA=false` at build time.
+
 Build and quality checks:
 
 ```bash
