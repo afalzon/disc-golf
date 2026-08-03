@@ -1,6 +1,10 @@
 type TopBarProps = {
   title: string
+  buildLabel: string
   canInstall: boolean
+  installLabel: string
+  installHint: string
+  installDisabled: boolean
   onInstall: () => void
   onCacheOffline: () => void
   onScanQr: () => void
@@ -10,7 +14,11 @@ type TopBarProps = {
 
 export const TopBar = ({
   title,
+  buildLabel,
   canInstall,
+  installLabel,
+  installHint,
+  installDisabled,
   onInstall,
   onCacheOffline,
   onScanQr,
@@ -22,6 +30,7 @@ export const TopBar = ({
       <div>
         <p className="eyebrow">Disc Golf Navigator</p>
         <h1>{title}</h1>
+        <p className="build-version">{buildLabel}</p>
       </div>
 
       <nav className="topbar-actions" aria-label="Main actions">
@@ -37,13 +46,16 @@ export const TopBar = ({
         <button
           type="button"
           className="chip chip-install"
-          disabled={!canInstall}
+          disabled={installDisabled}
           onClick={onInstall}
+          aria-disabled={installDisabled}
+          title={!canInstall ? installHint : undefined}
         >
-          Install App
+          {installLabel}
         </button>
       </nav>
 
+      <p className="install-status">{installHint}</p>
       <p className="cache-status">{cacheStatus}</p>
     </header>
   )
