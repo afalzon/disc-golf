@@ -13,6 +13,10 @@ type DeferredPrompt = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+type NavigatorWithStandalone = Navigator & {
+  standalone?: boolean
+}
+
 export const CoursePage = () => {
   const { courseId } = useParams()
   const [params, setParams] = useSearchParams()
@@ -27,6 +31,7 @@ export const CoursePage = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<DeferredPrompt | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [courseMissing, setCourseMissing] = useState(false)
+  const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +53,33 @@ export const CoursePage = () => {
 
     void load()
   }, [courseId])
+
+  useEffect(() => {
+    const checkInstalled = () => {
+      const nav = navigator as NavigatorWithStandalone
+      const inStandalone = window.matchMedia('(display-mode: standalone)').matches
+      const iosStandalone = nav.standalone === true
+      setIsInstalled(inStandalone || iosStandalone)
+    }
+
+    checkInstalled()
+
+    const media = window.matchMedia('(display-mode: standalone)')
+    const onDisplayModeChange = () => checkInstalled()
+    const onInstalled = () => {
+      setIsInstalled(true)
+      setDeferredPrompt(null)
+      setCacheStatus('App installed. Offline mode is available after opening a course and caching tiles.')
+    }
+
+    media.addEventListener('change', onDisplayModeChange)
+    window.addEventListener('appinstalled', onInstalled)
+
+    return () => {
+      media.removeEventListener('change', onDisplayModeChange)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -90,14 +122,78 @@ export const CoursePage = () => {
   }, [])
 
   const installApp = useCallback(async () => {
+    const nav = navigator as NavigatorWithStandalone
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+
+    if (isInstalled) {
+      setCacheStatus('App is already installed on this device.')
+      return
+    }
+
     if (!deferredPrompt) {
+      if (isIos) {
+        setCacheStatus('On iPhone/iPad: use Share, then Add to Home Screen.')
+      } else {
+        setCacheStatus('Install prompt not available yet. Keep using the site over HTTPS and try again.')
+      }
       return
     }
 
     await deferredPrompt.prompt()
-    await deferredPrompt.userChoice
+    const choice = await deferredPrompt.userChoice
+    if (choice.outcome === 'accepted') {
+      setCacheStatus('Install accepted. Finish install from your browser prompt.')
+    } else {
+      setCacheStatus('Install dismissed. You can try again later.')
+    }
     setDeferredPrompt(null)
-  }, [deferredPrompt])
+    if (nav.standalone === true || window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true)
+    }
+  }, [deferredPrompt, isInstalled])
+
+  const installUi = useMemo(() => {
+    const nav = navigator as NavigatorWithStandalone
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+
+    if (isInstalled) {
+      return {
+        label: 'Installed',
+        hint: 'App is installed. Use Enable Offline to cache map tiles for no-coverage use.',
+        disabled: true,
+      }
+    }
+
+    if (deferredPrompt) {
+      return {
+        label: 'Install App',
+        hint: 'Ready to install. Tap Install App to save this app to your device.',
+        disabled: false,
+      }
+    }
+
+    if (isIos) {
+      return {
+        label: 'Add to Home Screen',
+        hint: 'On iPhone/iPad, open Share and choose Add to Home Screen.',
+        disabled: true,
+      }
+    }
+
+    if (nav.standalone === true) {
+      return {
+        label: 'Installed',
+        hint: 'App is already running in standalone mode.',
+        disabled: true,
+      }
+    }
+
+    return {
+      label: 'Install Unavailable',
+      hint: 'Install prompt not available on this browser right now.',
+      disabled: true,
+    }
+  }, [deferredPrompt, isInstalled])
 
   const handleCache = useCallback(async () => {
     if (!course) {
@@ -154,11 +250,17 @@ export const CoursePage = () => {
     return <main className="page"><p>Loading course...</p></main>
   }
 
+  const buildLabel = `v${__APP_VERSION__} (${__APP_COMMIT__}) ${__APP_BUILD_TIME__.slice(0, 16).replace('T', ' ')}Z`
+
   return (
     <main className="page">
       <TopBar
         title={course.name}
+        buildLabel={buildLabel}
         canInstall={Boolean(deferredPrompt)}
+        installLabel={installUi.label}
+        installHint={installUi.hint}
+        installDisabled={installUi.disabled}
         onInstall={() => void installApp()}
         onCacheOffline={() => void handleCache()}
         onScanQr={() => setScannerOpen(true)}
