@@ -250,7 +250,7 @@ export const CoursePage = () => {
     return <main className="page"><p>Loading course...</p></main>
   }
 
-  const buildLabel = `v${__APP_VERSION__} (${__APP_COMMIT__})`
+  const buildLabel = `v${__APP_VERSION__} (${__APP_COMMIT__}) ${__APP_BUILD_TIME__.slice(0, 16).replace('T', ' ')}Z`
 
   return (
     <main className="page">
