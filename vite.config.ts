@@ -22,8 +22,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['vite.svg'],
+      includeAssets: ['favicon.svg', 'pwa-192.png', 'pwa-512.png', 'pwa-maskable-512.png'],
       manifest: {
+        id: '/',
         name: 'Disc Golf Navigator',
         short_name: 'DiscGolf',
         description: 'Offline-ready disc golf maps, holes, and GPS directions.',
@@ -31,16 +32,23 @@ export default defineConfig({
         background_color: '#f3ecd6',
         display: 'standalone',
         start_url: '/',
+        scope: '/',
         icons: [
           {
-            src: '/vite.svg',
+            src: '/pwa-192.png',
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
           },
           {
-            src: '/vite.svg',
+            src: '/pwa-512.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
+          },
+          {
+            src: '/pwa-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },

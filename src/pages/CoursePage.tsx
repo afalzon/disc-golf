@@ -124,6 +124,7 @@ export const CoursePage = () => {
   const installApp = useCallback(async () => {
     const nav = navigator as NavigatorWithStandalone
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    const isAndroid = /android/i.test(navigator.userAgent)
 
     if (isInstalled) {
       setCacheStatus('App is already installed on this device.')
@@ -133,6 +134,8 @@ export const CoursePage = () => {
     if (!deferredPrompt) {
       if (isIos) {
         setCacheStatus('On iPhone/iPad: use Share, then Add to Home Screen.')
+      } else if (isAndroid) {
+        setCacheStatus('On Android: open the browser menu and tap Install app or Add to Home screen.')
       } else {
         setCacheStatus('Install prompt not available yet. Keep using the site over HTTPS and try again.')
       }
@@ -155,6 +158,7 @@ export const CoursePage = () => {
   const installUi = useMemo(() => {
     const nav = navigator as NavigatorWithStandalone
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    const isAndroid = /android/i.test(navigator.userAgent)
 
     if (isInstalled) {
       return {
@@ -180,6 +184,14 @@ export const CoursePage = () => {
       }
     }
 
+    if (isAndroid) {
+      return {
+        label: 'Install From Browser Menu',
+        hint: 'If this button is unavailable, open your browser menu and choose Install app or Add to Home screen.',
+        disabled: true,
+      }
+    }
+
     if (nav.standalone === true) {
       return {
         label: 'Installed',
@@ -190,7 +202,7 @@ export const CoursePage = () => {
 
     return {
       label: 'Install Unavailable',
-      hint: 'Install prompt not available on this browser right now.',
+      hint: 'Install prompt not available on this browser right now. On some browsers, installation is in the browser menu.',
       disabled: true,
     }
   }, [deferredPrompt, isInstalled])
