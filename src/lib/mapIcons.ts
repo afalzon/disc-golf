@@ -57,6 +57,14 @@ const poiIcons: Record<PoiKind, L.Icon> = {
     '#16a34a',
     '<path d="M8 16.2 17 8l9 8.2-1.5 1.7-1.8-1.6v7.2h-4.4v-5.4h-2.6v5.4H10v-7.2l-1.8 1.6L6.7 16.2 8 15z" fill="#ffffff"/>',
   ),
+  start: buildPoiIcon(
+    '#22c55e',
+    '<path d="M13 10.2 24.2 17 13 23.8z" fill="#ffffff"/>',
+  ),
+  finish: buildPoiIcon(
+    '#0f172a',
+    '<path d="M12 9.2h1.7v15.6H12z" fill="#ffffff"/><path d="M13.7 10.2h8.4v8.8h-8.4z" fill="#ffffff"/><path d="M13.7 10.2h4.2v4.4h-4.2z" fill="#0f172a"/><path d="M17.9 14.6h4.2V19h-4.2z" fill="#0f172a"/>',
+  ),
   info: buildPoiIcon(
     '#64748b',
     '<circle cx="17" cy="11.3" r="1.8" fill="#ffffff"/><path d="M15.5 15h3v8h-3z" fill="#ffffff"/>',

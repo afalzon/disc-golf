@@ -606,7 +606,16 @@ export const AdminPage = () => {
     setStatus('Added walking path (save to persist)')
   }
 
-  const poiKindOptions: PoiKind[] = ['parking', 'restroom', 'water', 'shelter', 'info', 'other']
+  const poiKindOptions: PoiKind[] = [
+    'parking',
+    'restroom',
+    'water',
+    'shelter',
+    'start',
+    'finish',
+    'info',
+    'other',
+  ]
 
   return (
     <main className="page">
@@ -1036,7 +1045,7 @@ export const AdminPage = () => {
                   <input
                     value={activePoi.notes ?? ''}
                     onChange={(event) => updateActivePoi({ notes: event.target.value })}
-                    placeholder="Parking, restroom, water, shelter, etc."
+                    placeholder="Parking, restroom, water, shelter, start, finish, etc."
                   />
                 </label>
                 <div className="admin-coordinates">

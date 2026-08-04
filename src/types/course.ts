@@ -18,7 +18,15 @@ export type WalkingPath = {
   points: LatLng[]
 }
 
-export type PoiKind = 'parking' | 'restroom' | 'water' | 'shelter' | 'info' | 'other'
+export type PoiKind =
+  | 'parking'
+  | 'restroom'
+  | 'water'
+  | 'shelter'
+  | 'start'
+  | 'finish'
+  | 'info'
+  | 'other'
 
 export type Poi = {
   id: string
