@@ -21,6 +21,8 @@ type ClickCaptureProps = {
   onPoint: (point: LatLng) => void
 }
 
+type EditorPanel = 'course-settings' | 'hole' | 'path' | 'poi' | 'draft-path' | null
+
 const ClickCapture = ({ enabled, onPoint }: ClickCaptureProps) => {
   useMapEvents({
     click(event) {
@@ -41,6 +43,7 @@ export const AdminPage = () => {
   const [selectedHoleId, setSelectedHoleId] = useState<number>(1)
   const [selectedPathId, setSelectedPathId] = useState<string>('')
   const [selectedPoiId, setSelectedPoiId] = useState<string>('')
+  const [activeEditor, setActiveEditor] = useState<EditorPanel>('hole')
   const [draftName, setDraftName] = useState('')
   const [draftPoints, setDraftPoints] = useState<LatLng[]>([])
   const [markMode, setMarkMode] = useState<MarkMode>('none')
@@ -73,6 +76,25 @@ export const AdminPage = () => {
   }, [courseId])
 
   const nextPathName = draftName || `Path ${((course?.paths.length ?? 0) + 1).toString()}`
+
+  const toggleEditor = (panel: Exclude<EditorPanel, null>) => {
+    setActiveEditor((current) => (current === panel ? null : panel))
+  }
+
+  const selectHole = (holeId: number) => {
+    setSelectedHoleId(holeId)
+    setActiveEditor('hole')
+  }
+
+  const selectPath = (pathId: string) => {
+    setSelectedPathId(pathId)
+    setActiveEditor('path')
+  }
+
+  const selectPoi = (poiId: string) => {
+    setSelectedPoiId(poiId)
+    setActiveEditor('poi')
+  }
 
   const activeHole =
     course?.holes.find((hole) => hole.id === selectedHoleId) ?? course?.holes[0] ?? null
@@ -215,6 +237,7 @@ export const AdminPage = () => {
       }
 
       setSelectedHoleId(nextId)
+      setActiveEditor('hole')
 
       return {
         ...prev,
@@ -339,6 +362,7 @@ export const AdminPage = () => {
       }
 
       setSelectedPathId(nextId)
+      setActiveEditor('path')
 
       return {
         ...prev,
@@ -390,6 +414,7 @@ export const AdminPage = () => {
       }
 
       setSelectedPoiId(nextId)
+      setActiveEditor('poi')
 
       return {
         ...prev,
@@ -653,81 +678,92 @@ export const AdminPage = () => {
             <h2>Map start</h2>
           </div>
           <div className="admin-editor-actions">
-            <button
-              type="button"
-              className="chip"
-              onClick={() =>
-                updateCourseStart({
-                  lat: activeHole?.tee.lat,
-                  lng: activeHole?.tee.lng,
-                })
-              }
-              disabled={!activeHole}
-            >
-              Use Selected Tee
+            <button type="button" className="chip" onClick={() => toggleEditor('course-settings')}>
+              {activeEditor === 'course-settings' ? 'Collapse' : 'Open Editor'}
             </button>
-            <button
-              type="button"
-              className="chip"
-              onClick={() =>
-                updateCourseStart({
-                  lat: activeHole?.pin.lat,
-                  lng: activeHole?.pin.lng,
-                })
-              }
-              disabled={!activeHole}
-            >
-              Use Selected Pin
-            </button>
-            <button
-              type="button"
-              className={markMode === 'map-start' ? 'chip chip-install' : 'chip'}
-              onClick={() => setMode('map-start')}
-            >
-              {markMode === 'map-start' ? 'Cancel Mark Start' : 'Mark Start on Map'}
-            </button>
-            <button
-              type="button"
-              className="chip"
-              onClick={() =>
-                updateCourseStart({
-                  lat: course.center.lat,
-                  lng: course.center.lng,
-                })
-              }
-            >
-              Reset to Course Center
-            </button>
+            {activeEditor === 'course-settings' ? (
+              <>
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() =>
+                    updateCourseStart({
+                      lat: activeHole?.tee.lat,
+                      lng: activeHole?.tee.lng,
+                    })
+                  }
+                  disabled={!activeHole}
+                >
+                  Use Selected Tee
+                </button>
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() =>
+                    updateCourseStart({
+                      lat: activeHole?.pin.lat,
+                      lng: activeHole?.pin.lng,
+                    })
+                  }
+                  disabled={!activeHole}
+                >
+                  Use Selected Pin
+                </button>
+                <button
+                  type="button"
+                  className={markMode === 'map-start' ? 'chip chip-install' : 'chip'}
+                  onClick={() => setMode('map-start')}
+                >
+                  {markMode === 'map-start' ? 'Cancel Mark Start' : 'Mark Start on Map'}
+                </button>
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() =>
+                    updateCourseStart({
+                      lat: course.center.lat,
+                      lng: course.center.lng,
+                    })
+                  }
+                >
+                  Reset to Course Center
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
 
-        <div className="admin-form-grid admin-form-grid-path">
-          <label>
-            Start latitude
-            <input
-              type="number"
-              step="0.00001"
-              value={startPoint.lat}
-              onChange={(event) =>
-                updateCourseStart({ lat: Number(event.target.value) || startPoint.lat })
-              }
-            />
-          </label>
-          <label>
-            Start longitude
-            <input
-              type="number"
-              step="0.00001"
-              value={startPoint.lng}
-              onChange={(event) =>
-                updateCourseStart({ lng: Number(event.target.value) || startPoint.lng })
-              }
-            />
-          </label>
-          <div className="admin-path-hint">
-            Players will open the map on this start position. If it is not set, the app falls back to the course center.
+        {activeEditor === 'course-settings' ? (
+          <div className="admin-form-grid admin-form-grid-path">
+            <label>
+              Start latitude
+              <input
+                type="number"
+                step="0.00001"
+                value={startPoint.lat}
+                onChange={(event) =>
+                  updateCourseStart({ lat: Number(event.target.value) || startPoint.lat })
+                }
+              />
+            </label>
+            <label>
+              Start longitude
+              <input
+                type="number"
+                step="0.00001"
+                value={startPoint.lng}
+                onChange={(event) =>
+                  updateCourseStart({ lng: Number(event.target.value) || startPoint.lng })
+                }
+              />
+            </label>
+            <div className="admin-path-hint">
+              Players will open the map on this start position. If it is not set, the app falls back to the course center.
+            </div>
           </div>
-        </div>
+        ) : (
+          <p className="admin-editor-collapsed-note">Course settings collapsed. Open this panel to edit map start behavior.</p>
+        )}
       </section>
 
       <section className="admin-layout">
@@ -749,7 +785,7 @@ export const AdminPage = () => {
                   key={hole.id}
                   type="button"
                   className={hole.id === activeHole?.id ? 'hole-record active' : 'hole-record'}
-                  onClick={() => setSelectedHoleId(hole.id)}
+                  onClick={() => selectHole(hole.id)}
                 >
                   <strong>{hole.name}</strong>
                   <span>
@@ -777,7 +813,7 @@ export const AdminPage = () => {
                   key={path.id}
                   type="button"
                   className={path.id === activePath?.id ? 'hole-record active' : 'hole-record'}
-                  onClick={() => setSelectedPathId(path.id)}
+                  onClick={() => selectPath(path.id)}
                 >
                   <strong>{path.name}</strong>
                   <span>{path.points.length} control points</span>
@@ -803,7 +839,7 @@ export const AdminPage = () => {
                   key={poi.id}
                   type="button"
                   className={poi.id === activePoi?.id ? 'hole-record active' : 'hole-record'}
-                  onClick={() => setSelectedPoiId(poi.id)}
+                  onClick={() => selectPoi(poi.id)}
                 >
                   <strong>{poi.name}</strong>
                   <span>
@@ -822,38 +858,45 @@ export const AdminPage = () => {
               <h2>{activeHole?.name ?? 'Select a hole'}</h2>
             </div>
             <div className="admin-editor-actions">
-              <button type="button" className="chip" onClick={deleteSelectedHole} disabled={!activeHole}>
-                Delete Hole
+              <button type="button" className="chip" onClick={() => toggleEditor('hole')}>
+                {activeEditor === 'hole' ? 'Collapse' : 'Open Editor'}
               </button>
-              <button
-                type="button"
-                className={markMode === 'hole-tee' ? 'chip chip-install' : 'chip'}
-                onClick={() => setMode('hole-tee')}
-                disabled={!activeHole}
-              >
-                {markMode === 'hole-tee' ? 'Cancel Mark Tee' : 'Mark Tee on Map'}
-              </button>
-              <button
-                type="button"
-                className={markMode === 'hole-pin' ? 'chip chip-install' : 'chip'}
-                onClick={() => setMode('hole-pin')}
-                disabled={!activeHole}
-              >
-                {markMode === 'hole-pin' ? 'Cancel Mark Pin' : 'Mark Pin on Map'}
-              </button>
-              <button type="button" className="chip" onClick={generateHoleQr} disabled={!activeHole}>
-                Generate Hole QR
-              </button>
-              <button type="button" className="chip" onClick={downloadHoleQr} disabled={!holeQrSvg}>
-                Download QR SVG
-              </button>
-              <button type="button" className="chip chip-install" onClick={() => void save()}>
-                Save Changes
-              </button>
+              {activeEditor === 'hole' ? (
+                <>
+                  <button type="button" className="chip" onClick={deleteSelectedHole} disabled={!activeHole}>
+                    Delete Hole
+                  </button>
+                  <button
+                    type="button"
+                    className={markMode === 'hole-tee' ? 'chip chip-install' : 'chip'}
+                    onClick={() => setMode('hole-tee')}
+                    disabled={!activeHole}
+                  >
+                    {markMode === 'hole-tee' ? 'Cancel Mark Tee' : 'Mark Tee on Map'}
+                  </button>
+                  <button
+                    type="button"
+                    className={markMode === 'hole-pin' ? 'chip chip-install' : 'chip'}
+                    onClick={() => setMode('hole-pin')}
+                    disabled={!activeHole}
+                  >
+                    {markMode === 'hole-pin' ? 'Cancel Mark Pin' : 'Mark Pin on Map'}
+                  </button>
+                  <button type="button" className="chip" onClick={generateHoleQr} disabled={!activeHole}>
+                    Generate Hole QR
+                  </button>
+                  <button type="button" className="chip" onClick={downloadHoleQr} disabled={!holeQrSvg}>
+                    Download QR SVG
+                  </button>
+                  <button type="button" className="chip chip-install" onClick={() => void save()}>
+                    Save Changes
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
 
-          {activeHole ? (
+          {activeEditor === 'hole' && activeHole ? (
             <div className="admin-form-grid">
               <label>
                 Hole name
@@ -916,6 +959,8 @@ export const AdminPage = () => {
                 )}
               </div>
             </div>
+          ) : activeEditor !== 'hole' ? (
+            <p className="admin-editor-collapsed-note">Hole editor collapsed. Select a hole or open this panel to edit.</p>
           ) : (
             <p>No holes yet. Add one to begin editing.</p>
           )}
@@ -927,25 +972,32 @@ export const AdminPage = () => {
                 <h2>{activePath?.name ?? 'Select a path'}</h2>
               </div>
               <div className="admin-editor-actions">
-                <button type="button" className="chip" onClick={deleteSelectedPath} disabled={!activePath}>
-                  Delete Path
+                <button type="button" className="chip" onClick={() => toggleEditor('path')}>
+                  {activeEditor === 'path' ? 'Collapse' : 'Open Editor'}
                 </button>
-                <button
-                  type="button"
-                  className={markMode === 'path-waypoint' ? 'chip chip-install' : 'chip'}
-                  onClick={() => setMode('path-waypoint')}
-                  disabled={!activePath}
-                >
-                  {markMode === 'path-waypoint' ? 'Stop Waypoint Edit' : 'Edit Waypoints'}
-                </button>
-                <button type="button" className="chip chip-install" onClick={() => void save()}>
-                  Save Changes
-                </button>
+                {activeEditor === 'path' ? (
+                  <>
+                    <button type="button" className="chip" onClick={deleteSelectedPath} disabled={!activePath}>
+                      Delete Path
+                    </button>
+                    <button
+                      type="button"
+                      className={markMode === 'path-waypoint' ? 'chip chip-install' : 'chip'}
+                      onClick={() => setMode('path-waypoint')}
+                      disabled={!activePath}
+                    >
+                      {markMode === 'path-waypoint' ? 'Stop Waypoint Edit' : 'Edit Waypoints'}
+                    </button>
+                    <button type="button" className="chip chip-install" onClick={() => void save()}>
+                      Save Changes
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
 
-            {activePath ? (
-                <div className="admin-form-grid admin-form-grid-path">
+            {activeEditor === 'path' && activePath ? (
+              <div className="admin-form-grid admin-form-grid-path">
                 <label>
                   Path name
                   <input
@@ -954,40 +1006,42 @@ export const AdminPage = () => {
                     placeholder="Main trail"
                   />
                 </label>
-                  <div className="admin-coordinates">
-                    <p className="eyebrow">Path points</p>
-                    <span>{activePath.points.length} total points</span>
-                  </div>
-                  <div className="admin-path-waypoints">
-                    {activePath.points.map((point, index) => (
-                      <div key={`${activePath.id}-point-${index}`} className="admin-waypoint-row">
-                        <span>
-                          Waypoint {index + 1}: {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
-                        </span>
-                        <div className="admin-waypoint-actions">
-                          <button
-                            type="button"
-                            className="chip"
-                            onClick={() => updatePathPoint(index, { lat: point.lat + 0.0002, lng: point.lng + 0.0002 })}
-                          >
-                            Nudge
-                          </button>
-                          <button
-                            type="button"
-                            className="chip"
-                            onClick={() => deletePathWaypoint(index)}
-                            disabled={activePath.points.length <= 2}
-                          >
-                            Remove
-                          </button>
-                        </div>
+                <div className="admin-coordinates">
+                  <p className="eyebrow">Path points</p>
+                  <span>{activePath.points.length} total points</span>
+                </div>
+                <div className="admin-path-waypoints">
+                  {activePath.points.map((point, index) => (
+                    <div key={`${activePath.id}-point-${index}`} className="admin-waypoint-row">
+                      <span>
+                        Waypoint {index + 1}: {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+                      </span>
+                      <div className="admin-waypoint-actions">
+                        <button
+                          type="button"
+                          className="chip"
+                          onClick={() => updatePathPoint(index, { lat: point.lat + 0.0002, lng: point.lng + 0.0002 })}
+                        >
+                          Nudge
+                        </button>
+                        <button
+                          type="button"
+                          className="chip"
+                          onClick={() => deletePathWaypoint(index)}
+                          disabled={activePath.points.length <= 2}
+                        >
+                          Remove
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
+                </div>
                 <div className="admin-path-hint">
-                    Click <strong>Edit Waypoints</strong> and then tap the map to append waypoints to this path.
+                  Click <strong>Edit Waypoints</strong> and then tap the map to append waypoints to this path.
                 </div>
               </div>
+            ) : activeEditor !== 'path' ? (
+              <p className="admin-editor-collapsed-note">Path editor collapsed. Select a path or open this panel to edit.</p>
             ) : (
               <p>No paths yet. Add one to begin editing.</p>
             )}
@@ -1000,24 +1054,31 @@ export const AdminPage = () => {
                 <h2>{activePoi?.name ?? 'Select a POI'}</h2>
               </div>
               <div className="admin-editor-actions">
-                <button type="button" className="chip" onClick={deleteSelectedPoi} disabled={!activePoi}>
-                  Delete POI
+                <button type="button" className="chip" onClick={() => toggleEditor('poi')}>
+                  {activeEditor === 'poi' ? 'Collapse' : 'Open Editor'}
                 </button>
-                <button
-                  type="button"
-                  className={markMode === 'poi' ? 'chip chip-install' : 'chip'}
-                  onClick={() => setMode('poi')}
-                  disabled={!activePoi}
-                >
-                  {markMode === 'poi' ? 'Cancel Mark POI' : 'Mark POI on Map'}
-                </button>
-                <button type="button" className="chip chip-install" onClick={() => void save()}>
-                  Save Changes
-                </button>
+                {activeEditor === 'poi' ? (
+                  <>
+                    <button type="button" className="chip" onClick={deleteSelectedPoi} disabled={!activePoi}>
+                      Delete POI
+                    </button>
+                    <button
+                      type="button"
+                      className={markMode === 'poi' ? 'chip chip-install' : 'chip'}
+                      onClick={() => setMode('poi')}
+                      disabled={!activePoi}
+                    >
+                      {markMode === 'poi' ? 'Cancel Mark POI' : 'Mark POI on Map'}
+                    </button>
+                    <button type="button" className="chip chip-install" onClick={() => void save()}>
+                      Save Changes
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
 
-            {activePoi ? (
+            {activeEditor === 'poi' && activePoi ? (
               <div className="admin-form-grid admin-form-grid-path">
                 <label>
                   POI name
@@ -1055,23 +1116,43 @@ export const AdminPage = () => {
                   </span>
                 </div>
               </div>
+            ) : activeEditor !== 'poi' ? (
+              <p className="admin-editor-collapsed-note">POI editor collapsed. Select a POI or open this panel to edit.</p>
             ) : (
               <p>No POIs yet. Add one to begin editing.</p>
             )}
           </section>
 
           <section className="admin-toolbar card admin-toolbar-inline">
-            <label>
-              Path name
-              <input
-                value={draftName}
-                onChange={(event) => setDraftName(event.target.value)}
-                placeholder="Main trail"
-              />
-            </label>
-            <button type="button" className="chip" onClick={commitPath}>
-              Save Draft Path ({draftPoints.length} points)
-            </button>
+            <div className="admin-editor-head">
+              <div>
+                <p className="eyebrow">Draft Path</p>
+                <h2>{nextPathName}</h2>
+              </div>
+              <div className="admin-editor-actions">
+                <button type="button" className="chip" onClick={() => toggleEditor('draft-path')}>
+                  {activeEditor === 'draft-path' ? 'Collapse' : 'Open Editor'}
+                </button>
+                {activeEditor === 'draft-path' ? (
+                  <button type="button" className="chip" onClick={commitPath}>
+                    Save Draft Path ({draftPoints.length} points)
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {activeEditor === 'draft-path' ? (
+              <label>
+                Path name
+                <input
+                  value={draftName}
+                  onChange={(event) => setDraftName(event.target.value)}
+                  placeholder="Main trail"
+                />
+              </label>
+            ) : (
+              <p className="admin-editor-collapsed-note">Draft path editor collapsed. Open this panel to name and save the drafted route.</p>
+            )}
           </section>
         </section>
       </section>

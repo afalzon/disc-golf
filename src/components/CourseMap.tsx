@@ -1,4 +1,4 @@
-import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet'
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
 import type { Course, Hole, LatLng } from '../types/course'
 import { bearingDegrees, bearingToCompass, distanceMeters } from '../lib/geo'
 import { pinIcon, poiIconForKind, teeIcon } from '../lib/mapIcons'
@@ -8,6 +8,56 @@ type CourseMapProps = {
   selectedHole: Hole
   userLocation: LatLng | null
   onSelectHole: (holeId: number) => void
+}
+
+type MapViewportActionsProps = {
+  selectedHole: Hole
+  userLocation: LatLng | null
+}
+
+const MapViewportActions = ({ selectedHole, userLocation }: MapViewportActionsProps) => {
+  const map = useMap()
+
+  const zoomToHole = () => {
+    map.fitBounds(
+      [
+        [selectedHole.tee.lat, selectedHole.tee.lng],
+        [selectedHole.pin.lat, selectedHole.pin.lng],
+      ],
+      {
+        padding: [48, 48],
+        maxZoom: 18,
+      },
+    )
+  }
+
+  const zoomToUser = () => {
+    if (!userLocation) {
+      return
+    }
+
+    map.flyTo(
+      [userLocation.lat, userLocation.lng],
+      Math.max(map.getZoom(), 17),
+      { animate: true, duration: 0.45 },
+    )
+  }
+
+  return (
+    <div className="map-viewport-actions leaflet-top leaflet-right">
+      <button type="button" className="map-viewport-btn" onClick={zoomToHole}>
+        Zoom to Hole
+      </button>
+      <button
+        type="button"
+        className="map-viewport-btn"
+        onClick={zoomToUser}
+        disabled={!userLocation}
+      >
+        Zoom to My Location
+      </button>
+    </div>
+  )
 }
 
 export const CourseMap = ({
@@ -77,6 +127,8 @@ export const CourseMap = ({
             }
             attribution={course.tileAttribution ?? '&copy; OpenStreetMap contributors'}
           />
+
+          <MapViewportActions selectedHole={selectedHole} userLocation={userLocation} />
 
           {course.paths.map((path) => (
             <Polyline
