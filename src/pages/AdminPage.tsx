@@ -872,13 +872,13 @@ export const AdminPage = () => {
                   placeholder="Wind, landing zone, obstructions..."
                 />
               </label>
-              <div className="admin-coordinates">
+              <div className="admin-coordinates admin-coordinates-tee">
                 <p className="eyebrow">Tee coordinates</p>
                 <span>
                   {activeHole.tee.lat.toFixed(5)}, {activeHole.tee.lng.toFixed(5)}
                 </span>
               </div>
-              <div className="admin-coordinates">
+              <div className="admin-coordinates admin-coordinates-pin">
                 <p className="eyebrow">Pin coordinates</p>
                 <span>
                   {activeHole.pin.lat.toFixed(5)}, {activeHole.pin.lng.toFixed(5)}

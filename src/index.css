@@ -375,6 +375,26 @@ h1 {
   gap: 0.35rem;
 }
 
+.admin-coordinates-tee {
+  border-color: color-mix(in srgb, #1f9d55 42%, var(--line));
+  background: linear-gradient(145deg, rgba(31, 157, 85, 0.14), rgba(255, 255, 255, 0.9));
+}
+
+.admin-coordinates-tee .eyebrow,
+.admin-coordinates-tee span {
+  color: #1f9d55;
+}
+
+.admin-coordinates-pin {
+  border-color: color-mix(in srgb, #2f6bff 42%, var(--line));
+  background: linear-gradient(145deg, rgba(47, 107, 255, 0.14), rgba(255, 255, 255, 0.9));
+}
+
+.admin-coordinates-pin .eyebrow,
+.admin-coordinates-pin span {
+  color: #2f6bff;
+}
+
 .admin-toolbar-inline {
   margin: 0;
   background: rgba(255, 255, 255, 0.55);
