@@ -10,7 +10,9 @@ export const RoundSetupPage = () => {
   const navigate = useNavigate()
   const [courses, setCourses] = useState<CourseSummary[]>([])
   const [courseId, setCourseId] = useState(params.get('courseId') ?? '')
-  const [roundName, setRoundName] = useState('Saturday Match')
+  const [roundName, setRoundName] = useState(() =>
+    new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(new Date()),
+  )
   const [gameType, setGameType] = useState<GameType>('standard')
   const [status, setStatus] = useState('')
 
@@ -58,23 +60,25 @@ export const RoundSetupPage = () => {
         </p>
 
         <div className="round-setup-grid">
-          <label className="portal-field">
-            Course
-            <select value={courseId} onChange={(event) => setCourseId(event.target.value)} disabled={!courses.length}>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {courses.length > 1 ? (
+            <label className="portal-field">
+              Course
+              <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
           <label className="portal-field">
             Round name
             <input
               value={roundName}
               onChange={(event) => setRoundName(event.target.value)}
-              placeholder="Saturday Match"
+              placeholder="Wednesday"
             />
           </label>
 
