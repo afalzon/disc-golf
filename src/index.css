@@ -638,6 +638,20 @@ h1 {
   margin-top: 0.25rem;
 }
 
+.course-round-card {
+  margin-top: 0.15rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.round-sync-qr {
+  width: min(320px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: #fff;
+  padding: 0.45rem;
+}
+
 .round-option-checkbox,
 .round-option-fixed {
   border: 1px solid var(--line);

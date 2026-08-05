@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import QRCode from 'qrcode'
 import { CourseMap } from '../components/CourseMap'
 import { QrScannerDialog } from '../components/QrScannerDialog'
 import { TopBar } from '../components/TopBar'
 import { cacheCourseTiles } from '../lib/offline'
-import { resolveInternalRoute } from '../lib/qr'
+import { importRoundFromSync, loadRound } from '../lib/roundStorage'
+import { resolvePublicOrigin } from '../lib/publicOrigin'
+import { decodeRoundSyncToken, encodeRoundSyncToken, resolveInternalRoute } from '../lib/qr'
 import { findCourse } from '../lib/storage'
+import { getCachedActiveRoundId, setCachedActiveRoundId } from '../lib/syncCache'
 import type { Course, Hole, LatLng } from '../types/course'
+import type { Round } from '../types/round'
 
 type DeferredPrompt = Event & {
   prompt: () => Promise<void>
@@ -22,6 +27,7 @@ export const CoursePage = () => {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const holeFromQuery = Number(params.get('hole') ?? '1')
+  const roundIdFromQuery = params.get('roundId')?.trim() ?? ''
   const selectedHoleId =
     !Number.isNaN(holeFromQuery) && holeFromQuery > 0 ? holeFromQuery : 1
 
@@ -32,6 +38,10 @@ export const CoursePage = () => {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [courseMissing, setCourseMissing] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
+  const [activeRound, setActiveRound] = useState<Round | null>(null)
+  const [roundShareCode, setRoundShareCode] = useState('')
+  const [roundSyncQrCode, setRoundSyncQrCode] = useState('')
+  const [roundSyncQrOpen, setRoundSyncQrOpen] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -49,10 +59,52 @@ export const CoursePage = () => {
 
       setCourseMissing(false)
       setCourse(nextCourse)
+
+      const linkedRoundId = roundIdFromQuery || (await getCachedActiveRoundId(nextCourse.id)) || ''
+      if (!linkedRoundId) {
+        setActiveRound(null)
+        return
+      }
+
+      const linkedRound = await loadRound(linkedRoundId)
+      if (!linkedRound || linkedRound.courseId !== nextCourse.id) {
+        setActiveRound(null)
+        await setCachedActiveRoundId(nextCourse.id, null)
+
+        if (roundIdFromQuery) {
+          const nextQuery = new URLSearchParams(params)
+          nextQuery.delete('roundId')
+          setParams(nextQuery, { replace: true })
+        }
+        return
+      }
+
+      setActiveRound(linkedRound)
+      await setCachedActiveRoundId(nextCourse.id, linkedRound.id)
+
+      if (!roundIdFromQuery) {
+        const nextQuery = new URLSearchParams(params)
+        nextQuery.set('roundId', linkedRound.id)
+        setParams(nextQuery, { replace: true })
+      }
     }
 
     void load()
-  }, [courseId])
+  }, [courseId, params, roundIdFromQuery, setParams])
+
+  useEffect(() => {
+    if (!activeRound) {
+      setRoundShareCode('')
+      return
+    }
+
+    const buildShareCode = async () => {
+      const origin = await resolvePublicOrigin()
+      setRoundShareCode(`${origin}/round/${activeRound.id}`)
+    }
+
+    void buildShareCode()
+  }, [activeRound])
 
   useEffect(() => {
     const checkInstalled = () => {
@@ -226,17 +278,72 @@ export const CoursePage = () => {
     [params, setParams],
   )
 
+  const copyRoundShareLink = useCallback(async () => {
+    if (!roundShareCode) {
+      setCacheStatus('Round share link not ready yet')
+      return
+    }
+
+    await navigator.clipboard.writeText(roundShareCode)
+    setCacheStatus('Round share link copied')
+  }, [roundShareCode])
+
+  const showRoundSyncQr = useCallback(async () => {
+    if (!activeRound) {
+      setCacheStatus('No active round loaded for this course')
+      return
+    }
+
+    const token = encodeRoundSyncToken(activeRound)
+    const qr = await QRCode.toDataURL(token, {
+      width: 340,
+      margin: 1,
+      color: {
+        dark: '#17211e',
+        light: '#ffffff',
+      },
+    })
+
+    setRoundSyncQrCode(qr)
+    setRoundSyncQrOpen(true)
+  }, [activeRound])
+
   const handleQrDetected = useCallback(
     (value: string) => {
-      const internalRoute = resolveInternalRoute(value)
+      void (async () => {
+        const syncedRound = decodeRoundSyncToken(value)
 
-      if (internalRoute) {
-        navigate(internalRoute)
-      } else {
-        setCacheStatus('QR detected, but it is not a route for this app')
-      }
+        if (syncedRound) {
+          const imported = await importRoundFromSync(syncedRound)
+          if (course && imported.courseId === course.id) {
+            setActiveRound(imported)
+            await setCachedActiveRoundId(course.id, imported.id)
+
+            const nextQuery = new URLSearchParams(params)
+            nextQuery.set('roundId', imported.id)
+            setParams(nextQuery, { replace: true })
+            setCacheStatus('Round scorecard synced from QR')
+          } else {
+            setCacheStatus('Round data imported. Open the matching course to continue.')
+          }
+          return
+        }
+
+        const internalRoute = resolveInternalRoute(value)
+        if (!internalRoute) {
+          setCacheStatus('QR detected, but it is not a route or sync payload for this app')
+          return
+        }
+
+        const parsed = new URL(internalRoute, window.location.origin)
+        if (activeRound && parsed.pathname === `/course/${activeRound.courseId}` && !parsed.searchParams.has('roundId')) {
+          parsed.searchParams.set('roundId', activeRound.id)
+        }
+
+        navigate(`${parsed.pathname}${parsed.search}${parsed.hash}`)
+      })()
     },
-    [navigate],
+    [activeRound, course, navigate, params, setParams],
   )
 
   if (courseMissing) {
@@ -276,9 +383,40 @@ export const CoursePage = () => {
         onInstall={() => void installApp()}
         onCacheOffline={() => void handleCache()}
         onScanQr={() => setScannerOpen(true)}
-        onStartRound={() => navigate(`/rounds/new?courseId=${course.id}`)}
+        onStartRound={() =>
+          activeRound ? navigate(`/round/${activeRound.id}`) : navigate(`/rounds/new?courseId=${course.id}`)
+        }
+        startRoundLabel={activeRound ? 'Open Round' : 'Start Round'}
         cacheStatus={cacheStatus}
       />
+
+      {activeRound ? (
+        <section className="card course-round-card">
+          <div className="admin-editor-head">
+            <div>
+              <p className="eyebrow">Active Round</p>
+              <h2>{activeRound.name}</h2>
+            </div>
+            <div className="admin-editor-actions">
+              <button type="button" className="chip chip-install" onClick={() => navigate(`/round/${activeRound.id}`)}>
+                Open Scorecard
+              </button>
+              <button type="button" className="chip" onClick={() => void copyRoundShareLink()}>
+                Share Link
+              </button>
+              <button type="button" className="chip" onClick={() => void showRoundSyncQr()}>
+                Share Sync QR
+              </button>
+              <button type="button" className="chip" onClick={() => setScannerOpen(true)}>
+                Import Sync QR
+              </button>
+            </div>
+          </div>
+          <p className="portal-copy">
+            Status: {activeRound.status} · Hole {activeRound.currentHoleIndex + 1}
+          </p>
+        </section>
+      ) : null}
 
       <section className="action-row">
         <button type="button" className="chip" onClick={requestGps}>
@@ -298,6 +436,25 @@ export const CoursePage = () => {
         onClose={() => setScannerOpen(false)}
         onDetected={handleQrDetected}
       />
+
+      {roundSyncQrOpen ? (
+        <div className="dialog-backdrop" role="presentation" onClick={() => setRoundSyncQrOpen(false)}>
+          <section
+            className="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Round sync QR"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2>Round Sync QR</h2>
+            <p>Scan this QR on another device to merge scorecard data while offline.</p>
+            {roundSyncQrCode ? <img className="round-sync-qr" src={roundSyncQrCode} alt="Round sync QR code" /> : null}
+            <button type="button" className="chip" onClick={() => setRoundSyncQrOpen(false)}>
+              Close
+            </button>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }

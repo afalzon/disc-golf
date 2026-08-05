@@ -5,6 +5,7 @@ import { CourseMap } from '../components/CourseMap'
 import { resolvePublicOrigin } from '../lib/publicOrigin'
 import { findCourse } from '../lib/storage'
 import { deleteRound, loadRound, saveRound, saveRoundScore } from '../lib/roundStorage'
+import { setCachedActiveRoundId } from '../lib/syncCache'
 import { validateName } from '../lib/nameFilter'
 import type { Course, Hole, LatLng } from '../types/course'
 import { gameTypeOptions, type Round, type RoundPlayer, type RoundTeam } from '../types/round'
@@ -66,6 +67,7 @@ export const RoundPage = () => {
       setCourseMissing(false)
       setRound(nextRound)
       setCourse(nextCourse)
+      await setCachedActiveRoundId(nextCourse.id, nextRound.id)
       setScorecardCollapsed(nextRound.status !== 'active')
       const origin = await resolvePublicOrigin()
       setShareCode(`${origin}/round/${nextRound.id}`)
@@ -365,6 +367,7 @@ export const RoundPage = () => {
     }
 
     await deleteRound(round.id)
+    await setCachedActiveRoundId(round.courseId, null)
     navigate('/rounds/new?courseId=' + round.courseId)
   }
 
@@ -417,7 +420,7 @@ export const RoundPage = () => {
         </div>
 
         <div className="portal-actions-row">
-          <Link className="chip" to={`/course/${course.id}`}>
+          <Link className="chip" to={`/course/${course.id}?roundId=${round.id}`}>
             Back to Course
           </Link>
           <button type="button" className="chip" onClick={() => void copyShareLink()}>

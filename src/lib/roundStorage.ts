@@ -221,3 +221,27 @@ export const deleteRound = async (roundId: string): Promise<void> => {
 
   await deleteCachedRound(roundId)
 }
+
+export const importRoundFromSync = async (incomingRound: Round): Promise<Round> => {
+  const incoming = withDefaults(incomingRound)
+  const existing = await getCachedRound(incoming.id)
+
+  const merged = existing
+    ? withDefaults({
+      ...existing,
+      ...incoming,
+      ...mergeRoundScores(existing, incoming),
+      revision: Math.max(existing.revision, incoming.revision),
+      updatedAt: existing.updatedAt > incoming.updatedAt ? existing.updatedAt : incoming.updatedAt,
+    })
+    : incoming
+
+  await setCachedRound(merged)
+
+  try {
+    const saved = await saveRound(merged)
+    return saved
+  } catch {
+    return merged
+  }
+}

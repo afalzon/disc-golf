@@ -32,6 +32,7 @@ const ROUNDS_STORE = 'rounds'
 const COURSE_SUMMARIES_STORE = 'courseSummaries'
 const SETTINGS_STORE = 'settings'
 const DEFAULT_COURSE_KEY = 'default-course-id'
+const activeRoundKey = (courseId: string): string => `active-round:${courseId}`
 
 const dbPromise = openDB<SyncCacheDb>(DB_NAME, 1, {
   upgrade(db) {
@@ -68,6 +69,27 @@ export const setCachedDefaultCourseId = async (courseId: string | null): Promise
   }
 
   await db.put(SETTINGS_STORE, courseId, DEFAULT_COURSE_KEY)
+}
+
+export const getCachedActiveRoundId = async (courseId: string): Promise<string | null> => {
+  const db = await dbPromise
+  const value = await db.get(SETTINGS_STORE, activeRoundKey(courseId))
+  return value ?? null
+}
+
+export const setCachedActiveRoundId = async (
+  courseId: string,
+  roundId: string | null,
+): Promise<void> => {
+  const db = await dbPromise
+  const key = activeRoundKey(courseId)
+
+  if (!roundId) {
+    await db.delete(SETTINGS_STORE, key)
+    return
+  }
+
+  await db.put(SETTINGS_STORE, roundId, key)
 }
 
 export const getCachedCourse = async (courseId: string): Promise<Course | null> => {

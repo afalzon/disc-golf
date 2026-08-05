@@ -9,6 +9,7 @@ type TopBarProps = {
   onCacheOffline: () => void
   onScanQr: () => void
   onStartRound: () => void
+  startRoundLabel?: string
   cacheStatus: string
 }
 
@@ -23,6 +24,7 @@ export const TopBar = ({
   onCacheOffline,
   onScanQr,
   onStartRound,
+  startRoundLabel = 'Start Round',
   cacheStatus,
 }: TopBarProps) => {
   return (
@@ -35,7 +37,7 @@ export const TopBar = ({
 
       <nav className="topbar-actions" aria-label="Main actions">
         <button type="button" className="chip chip-install" onClick={onStartRound}>
-          Start Round
+          {startRoundLabel}
         </button>
         <button type="button" className="chip" onClick={onScanQr}>
           Scan QR

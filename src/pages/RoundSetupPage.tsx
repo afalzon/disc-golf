@@ -62,7 +62,7 @@ export const RoundSetupPage = () => {
       teamsEnabled: canToggleTeams ? teamsEnabled : true,
     })
 
-    navigate(`/round/${round.id}`)
+    navigate(`/course/${courseId}?roundId=${round.id}`)
   }
 
   return (
