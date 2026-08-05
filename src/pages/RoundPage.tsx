@@ -1,18 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
+import { CourseMap } from '../components/CourseMap'
 import { resolvePublicOrigin } from '../lib/publicOrigin'
 import { findCourse } from '../lib/storage'
 import { deleteRound, loadRound, saveRound, saveRoundScore } from '../lib/roundStorage'
 import { validateName } from '../lib/nameFilter'
-import type { Course, Hole } from '../types/course'
-import type { Round, RoundPlayer, RoundTeam } from '../types/round'
+import type { Course, Hole, LatLng } from '../types/course'
+import { gameTypeOptions, type Round, type RoundPlayer, type RoundTeam } from '../types/round'
 
 type ScoreTarget = RoundPlayer | RoundTeam
 
-const isTeamRound = (round: Round): boolean => round.gameType !== 'standard' && round.teams.length > 0
+const isTeamScoringEnabled = (round: Round): boolean => Boolean(round.teamsEnabled)
+
+const isTeamRound = (round: Round): boolean => isTeamScoringEnabled(round) && round.teams.length > 0
 
 const getScoreTargets = (round: Round): ScoreTarget[] => (isTeamRound(round) ? round.teams : round.players)
+
+const getScoreValue = (round: Round, holeId: number, targetId: string): number | null => {
+  const value = round.scores[String(holeId)]?.[targetId]
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+const getTargetTotal = (round: Round, targetId: string, holes: Hole[]): number =>
+  holes.reduce((total, hole) => {
+    const value = getScoreValue(round, hole.id, targetId)
+    return total + (value ?? 0)
+  }, 0)
 
 const createId = (prefix: string): string => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
@@ -28,6 +42,8 @@ export const RoundPage = () => {
   const [playerTeamId, setPlayerTeamId] = useState('')
   const [teamName, setTeamName] = useState('')
   const [courseMissing, setCourseMissing] = useState(false)
+  const [userLocation, setUserLocation] = useState<LatLng | null>(null)
+  const [scorecardCollapsed, setScorecardCollapsed] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -50,6 +66,7 @@ export const RoundPage = () => {
       setCourseMissing(false)
       setRound(nextRound)
       setCourse(nextCourse)
+      setScorecardCollapsed(nextRound.status !== 'active')
       const origin = await resolvePublicOrigin()
       setShareCode(`${origin}/round/${nextRound.id}`)
     }
@@ -79,6 +96,11 @@ export const RoundPage = () => {
   }, [shareCode])
 
   const scoreTargets = useMemo(() => (round ? getScoreTargets(round) : []), [round])
+  const gameTypeOption = useMemo(
+    () => (round ? gameTypeOptions.find((option) => option.value === round.gameType) ?? null : null),
+    [round],
+  )
+  const canToggleTeams = gameTypeOption?.allowsOptionalTeams ?? false
 
   const selectedHole = useMemo<Hole | null>(() => {
     if (!course || !course.holes.length) {
@@ -117,6 +139,11 @@ export const RoundPage = () => {
       return
     }
 
+    if (!isTeamScoringEnabled(round)) {
+      setStatus('Enable team scoring first to add teams')
+      return
+    }
+
     const newTeam: RoundTeam = {
       id: createId('team'),
       name: teamName.trim(),
@@ -137,12 +164,14 @@ export const RoundPage = () => {
     const nextPlayer: RoundPlayer = {
       id: createId('player'),
       name: playerName.trim(),
-      teamId: playerTeamId || undefined,
+      teamId: isTeamScoringEnabled(round) ? playerTeamId || undefined : undefined,
     }
 
-    const nextTeams = round.teams.map((team) =>
-      team.id === playerTeamId ? { ...team, playerIds: [...team.playerIds, nextPlayer.id] } : team,
-    )
+    const nextTeams = isTeamScoringEnabled(round)
+      ? round.teams.map((team) =>
+        team.id === playerTeamId ? { ...team, playerIds: [...team.playerIds, nextPlayer.id] } : team,
+      )
+      : round.teams
 
     setPlayerName('')
     setPlayerTeamId('')
@@ -177,7 +206,7 @@ export const RoundPage = () => {
   }
 
   const updatePlayerTeam = async (playerId: string, teamId: string) => {
-    if (!round) {
+    if (!round || !isTeamScoringEnabled(round)) {
       return
     }
 
@@ -210,6 +239,45 @@ export const RoundPage = () => {
     setStatus('Score updated')
   }
 
+  const setScoreForTarget = async (holeId: number, targetId: string, value: number | null) => {
+    if (value === null) {
+      await updateScore(holeId, targetId, '')
+      return
+    }
+
+    await updateScore(holeId, targetId, String(Math.max(1, Math.min(20, value))))
+  }
+
+  const stepScoreForTarget = async (holeId: number, targetId: string, direction: 1 | -1) => {
+    if (!round) {
+      return
+    }
+
+    const current = getScoreValue(round, holeId, targetId)
+    const base = current ?? 0
+    const stepped = Math.max(1, Math.min(20, base + direction))
+    await setScoreForTarget(holeId, targetId, stepped)
+  }
+
+  const toggleTeamsEnabled = async (enabled: boolean) => {
+    if (!round || !canToggleTeams || round.status !== 'setup') {
+      return
+    }
+
+    if (enabled) {
+      await persist({ ...round, teamsEnabled: true })
+      return
+    }
+
+    const clearedPlayers = round.players.map((player) => ({ ...player, teamId: undefined }))
+    await persist({
+      ...round,
+      teamsEnabled: false,
+      teams: [],
+      players: clearedPlayers,
+    })
+  }
+
   const startScoring = async () => {
     if (!round) {
       return
@@ -220,7 +288,13 @@ export const RoundPage = () => {
       return
     }
 
+    if (isTeamScoringEnabled(round) && !round.teams.length) {
+      setStatus('Add at least one team or disable team scoring before starting')
+      return
+    }
+
     await persist({ ...round, status: 'active' })
+    setScorecardCollapsed(false)
   }
 
   const finishRound = async () => {
@@ -238,6 +312,42 @@ export const RoundPage = () => {
 
     const nextIndex = Math.max(0, Math.min(course.holes.length - 1, round.currentHoleIndex + direction))
     await updateRound((current) => ({ ...current, currentHoleIndex: nextIndex }))
+  }
+
+  const selectHole = async (holeId: number) => {
+    if (!round || !course) {
+      return
+    }
+
+    const nextIndex = course.holes.findIndex((hole) => hole.id === holeId)
+    if (nextIndex < 0 || nextIndex === round.currentHoleIndex) {
+      return
+    }
+
+    await updateRound((current) => ({ ...current, currentHoleIndex: nextIndex }))
+  }
+
+  const requestGps = () => {
+    if (!navigator.geolocation) {
+      setStatus('GPS is not available on this device')
+      return
+    }
+
+    navigator.geolocation.watchPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+      },
+      () => {
+        setStatus('GPS permission was denied')
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+      },
+    )
   }
 
   const copyShareLink = async () => {
@@ -341,46 +451,61 @@ export const RoundPage = () => {
           <div className="admin-editor-head">
             <div>
               <p className="eyebrow">Roster</p>
-              <h2>Add players and teams</h2>
+              <h2>{isTeamScoringEnabled(round) ? 'Add players and teams' : 'Add players'}</h2>
             </div>
+            {canToggleTeams ? (
+              <label className="round-toggle-row">
+                <input
+                  type="checkbox"
+                  checked={isTeamScoringEnabled(round)}
+                  disabled={round.status !== 'setup'}
+                  onChange={(event) => void toggleTeamsEnabled(event.target.checked)}
+                />
+                <span>Use teams for scoring</span>
+              </label>
+            ) : null}
           </div>
 
-          <div className="round-roster-grid">
-            <div className="round-roster-panel">
-              <h3>Teams</h3>
-              <div className="round-form-row">
-                <input value={teamName} onChange={(event) => setTeamName(event.target.value)} placeholder="Team name" />
-                <button type="button" className="chip chip-install" onClick={() => void addTeam()}>
-                  Add Team
-                </button>
-              </div>
-              <div className="round-list">
-                {round.teams.map((team) => (
-                  <div key={team.id} className="round-list-item">
-                    <div>
-                      <strong>{team.name}</strong>
-                      <span>{team.playerIds.length} players</span>
+          <div className={isTeamScoringEnabled(round) ? 'round-roster-grid' : 'round-roster-grid round-roster-grid-single'}>
+            {isTeamScoringEnabled(round) ? (
+              <div className="round-roster-panel">
+                <h3>Teams</h3>
+                <div className="round-form-row">
+                  <input value={teamName} onChange={(event) => setTeamName(event.target.value)} placeholder="Team name" />
+                  <button type="button" className="chip chip-install" onClick={() => void addTeam()}>
+                    Add Team
+                  </button>
+                </div>
+                <div className="round-list">
+                  {round.teams.map((team) => (
+                    <div key={team.id} className="round-list-item">
+                      <div>
+                        <strong>{team.name}</strong>
+                        <span>{team.playerIds.length} players</span>
+                      </div>
+                      <button type="button" className="chip" onClick={() => void removeTeam(team.id)}>
+                        Remove
+                      </button>
                     </div>
-                    <button type="button" className="chip" onClick={() => void removeTeam(team.id)}>
-                      Remove
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <div className="round-roster-panel">
               <h3>Players</h3>
               <div className="round-form-row">
                 <input value={playerName} onChange={(event) => setPlayerName(event.target.value)} placeholder="Player name" />
-                <select value={playerTeamId} onChange={(event) => setPlayerTeamId(event.target.value)}>
-                  <option value="">No team</option>
-                  {round.teams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
+                {isTeamScoringEnabled(round) ? (
+                  <select value={playerTeamId} onChange={(event) => setPlayerTeamId(event.target.value)}>
+                    <option value="">No team</option>
+                    {round.teams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 <button type="button" className="chip chip-install" onClick={() => void addPlayer()}>
                   Add Player
                 </button>
@@ -390,19 +515,25 @@ export const RoundPage = () => {
                   <div key={player.id} className="round-list-item">
                     <div>
                       <strong>{player.name}</strong>
-                      <span>
-                        {round.teams.find((team) => team.id === player.teamId)?.name ?? 'No team'}
-                      </span>
+                      {isTeamScoringEnabled(round) ? (
+                        <span>
+                          {round.teams.find((team) => team.id === player.teamId)?.name ?? 'No team'}
+                        </span>
+                      ) : (
+                        <span>Individual score</span>
+                      )}
                     </div>
                     <div className="round-player-actions">
-                      <select value={player.teamId ?? ''} onChange={(event) => void updatePlayerTeam(player.id, event.target.value)}>
-                        <option value="">No team</option>
-                        {round.teams.map((team) => (
-                          <option key={team.id} value={team.id}>
-                            {team.name}
-                          </option>
-                        ))}
-                      </select>
+                      {isTeamScoringEnabled(round) ? (
+                        <select value={player.teamId ?? ''} onChange={(event) => void updatePlayerTeam(player.id, event.target.value)}>
+                          <option value="">No team</option>
+                          {round.teams.map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
                       <button type="button" className="chip" onClick={() => void removePlayer(player.id)}>
                         Remove
                       </button>
@@ -415,60 +546,130 @@ export const RoundPage = () => {
         </section>
       </section>
 
-      <section className="card round-scorecard-card">
-        <div className="admin-editor-head">
-          <div>
-            <p className="eyebrow">Scorecard</p>
-            <h2>{selectedHole.name}</h2>
-          </div>
-          <div className="admin-editor-actions">
-            <button type="button" className="chip" onClick={() => void nextHole(-1)} disabled={round.currentHoleIndex === 0}>
-              Previous Hole
-            </button>
-            <button type="button" className="chip chip-install" onClick={() => void nextHole(1)} disabled={round.currentHoleIndex >= course.holes.length - 1}>
-              Next Hole
-            </button>
-          </div>
-        </div>
-
-        {round.status !== 'active' ? (
-          <p className="portal-copy">Add your roster, then start scoring to enable the score inputs.</p>
-        ) : null}
-
-        <div className="round-score-meta">
-          <span>Hole {selectedHole.id}</span>
-          <span>Par {selectedHole.par}</span>
-          <span>{scoreTargets.length} scoring rows</span>
-        </div>
-
-        <div className="round-score-grid">
-          <div className="round-score-head">Player / Team</div>
-          {course.holes.map((hole) => (
-            <div key={hole.id} className="round-score-head">
-              {hole.name}
+      {round.status !== 'setup' ? (
+        <section className="card round-scorecard-card">
+          <div className="admin-editor-head">
+            <div>
+              <p className="eyebrow">Scorecard</p>
+              <h2>{selectedHole.name}</h2>
             </div>
-          ))}
+            <div className="admin-editor-actions">
+              <button type="button" className="chip" onClick={() => setScorecardCollapsed((value) => !value)}>
+                {scorecardCollapsed ? 'Expand Scorecard' : 'Collapse Scorecard'}
+              </button>
+              <button type="button" className="chip" onClick={() => void nextHole(-1)} disabled={round.currentHoleIndex === 0}>
+                Previous Hole
+              </button>
+              <button type="button" className="chip chip-install" onClick={() => void nextHole(1)} disabled={round.currentHoleIndex >= course.holes.length - 1}>
+                Next Hole
+              </button>
+            </div>
+          </div>
 
-          {scoreTargets.map((target) => (
+          {!scorecardCollapsed ? (
             <>
-              <div key={`${target.id}-label`} className="round-score-label">
-                <strong>{target.name}</strong>
+              {round.status !== 'active' ? (
+                <p className="portal-copy">Round is not active. Scores are read-only.</p>
+              ) : null}
+
+              <div className="round-score-meta">
+                <span>Hole {selectedHole.id}</span>
+                <span>Par {selectedHole.par}</span>
+                <span>{isTeamRound(round) ? 'Team' : 'Player'} scoring</span>
               </div>
-              {course.holes.map((hole) => (
-                <input
-                  key={`${target.id}-${hole.id}`}
-                  className="round-score-input"
-                  type="number"
-                  min="1"
-                  max="20"
-                  disabled={round.status !== 'active'}
-                  value={round.scores[String(hole.id)]?.[target.id] ?? ''}
-                  onChange={(event) => void updateScore(hole.id, target.id, event.target.value)}
-                />
-              ))}
+
+              {!scoreTargets.length ? (
+                <p className="portal-copy">
+                  {isTeamScoringEnabled(round)
+                    ? 'Add teams to start scoring in team mode.'
+                    : 'Add players to start scoring.'}
+                </p>
+              ) : (
+                <div className="round-score-simple-list">
+                  {scoreTargets.map((target) => {
+                    const current = getScoreValue(round, selectedHole.id, target.id)
+                    const total = getTargetTotal(round, target.id, course.holes)
+
+                    return (
+                      <article key={target.id} className="round-score-simple-row">
+                        <div className="round-score-simple-head">
+                          <strong>{target.name}</strong>
+                          <span>Total {total}</span>
+                        </div>
+
+                        <div className="round-score-stepper">
+                          <button
+                            type="button"
+                            className="chip"
+                            onClick={() => void stepScoreForTarget(selectedHole.id, target.id, -1)}
+                            disabled={round.status !== 'active'}
+                          >
+                            -
+                          </button>
+                          <input
+                            className="round-score-simple-input"
+                            type="number"
+                            min="1"
+                            max="20"
+                            inputMode="numeric"
+                            disabled={round.status !== 'active'}
+                            value={current ?? ''}
+                            onChange={(event) => void updateScore(selectedHole.id, target.id, event.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="chip chip-install"
+                            onClick={() => void stepScoreForTarget(selectedHole.id, target.id, 1)}
+                            disabled={round.status !== 'active'}
+                          >
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            className="chip"
+                            onClick={() => void setScoreForTarget(selectedHole.id, target.id, null)}
+                            disabled={round.status !== 'active'}
+                          >
+                            Clear
+                          </button>
+                        </div>
+
+                        <div className="round-score-quick-picks">
+                          {[2, 3, 4, 5, 6].map((value) => (
+                            <button
+                              key={`${target.id}-${value}`}
+                              type="button"
+                              className="chip"
+                              onClick={() => void setScoreForTarget(selectedHole.id, target.id, value)}
+                              disabled={round.status !== 'active'}
+                            >
+                              {value}
+                            </button>
+                          ))}
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
             </>
-          ))}
-        </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className="action-row">
+        <button type="button" className="chip" onClick={requestGps}>
+          Allow GPS / Start Directions
+        </button>
+      </section>
+
+      <section className="round-map-section">
+        <CourseMap
+          course={course}
+          selectedHole={selectedHole}
+          userLocation={userLocation}
+          onSelectHole={(holeId) => void selectHole(holeId)}
+        />
       </section>
 
       <p className="cache-status">{status || 'Round loaded.'}</p>

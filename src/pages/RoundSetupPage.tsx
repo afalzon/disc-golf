@@ -14,7 +14,15 @@ export const RoundSetupPage = () => {
     new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(new Date()),
   )
   const [gameType, setGameType] = useState<GameType>('standard')
+  const [teamsEnabled, setTeamsEnabled] = useState(false)
   const [status, setStatus] = useState('')
+
+  const selectedGameTypeOption = useMemo(
+    () => gameTypeOptions.find((option) => option.value === gameType),
+    [gameType],
+  )
+
+  const canToggleTeams = selectedGameTypeOption?.allowsOptionalTeams ?? false
 
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === courseId) ?? null,
@@ -32,6 +40,12 @@ export const RoundSetupPage = () => {
     void load()
   }, [])
 
+  useEffect(() => {
+    if (!canToggleTeams) {
+      setTeamsEnabled(true)
+    }
+  }, [canToggleTeams])
+
   const handleCreate = async () => {
     const courseError = selectedCourse ? null : 'Choose a course first'
     const roundError = validateName(roundName, 'Round name')
@@ -45,6 +59,7 @@ export const RoundSetupPage = () => {
       courseId,
       name: roundName.trim(),
       gameType,
+      teamsEnabled: canToggleTeams ? teamsEnabled : true,
     })
 
     navigate(`/round/${round.id}`)
@@ -93,8 +108,27 @@ export const RoundSetupPage = () => {
             </select>
           </label>
 
+          {canToggleTeams ? (
+            <div className="portal-field round-option-checkbox">
+              <span>Scoring mode</span>
+              <label className="round-toggle-row">
+                <input
+                  type="checkbox"
+                  checked={teamsEnabled}
+                  onChange={(event) => setTeamsEnabled(event.target.checked)}
+                />
+                <span>Use teams for scorecard</span>
+              </label>
+            </div>
+          ) : (
+            <div className="portal-field round-option-fixed">
+              <span>Scoring mode</span>
+              <strong>Team scoring required for this game type</strong>
+            </div>
+          )}
+
           <div className="round-type-help">
-            {gameTypeOptions.find((option) => option.value === gameType)?.description}
+            {selectedGameTypeOption?.description}
           </div>
         </div>
 

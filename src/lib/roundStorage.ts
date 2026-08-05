@@ -5,7 +5,8 @@ const API_BASE = '/api'
 
 const withDefaults = (round: Round): Round => ({
   ...round,
-  name: round.name.trim() || 'New Round'
+  name: round.name.trim() || 'New Round',
+  teamsEnabled: typeof round.teamsEnabled === 'boolean' ? round.teamsEnabled : round.gameType !== 'standard',
 })
 
 const parseJson = async <T>(response: Response): Promise<T> => {
@@ -102,6 +103,7 @@ export const createRound = async (input: {
   courseId: string
   name: string
   gameType: GameType
+  teamsEnabled: boolean
 }): Promise<Round> => {
   const response = await fetch(`${API_BASE}/rounds`, {
     method: 'POST',
@@ -113,6 +115,7 @@ export const createRound = async (input: {
       courseId: input.courseId,
       name: input.name,
       gameType: input.gameType,
+      teamsEnabled: input.teamsEnabled,
     }),
   })
 

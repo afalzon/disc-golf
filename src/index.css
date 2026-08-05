@@ -472,6 +472,193 @@ h1 {
   gap: 0.45rem;
 }
 
+.round-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.round-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.round-share-card,
+.round-roster-card,
+.round-scorecard-card {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.round-code {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.round-qr {
+  width: min(210px, 100%);
+  border-radius: 0.8rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 0.35rem;
+}
+
+.round-url {
+  word-break: break-all;
+}
+
+.round-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.round-roster-grid-single {
+  grid-template-columns: 1fr;
+}
+
+.round-roster-panel {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.68);
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.round-roster-panel h3 {
+  margin: 0;
+}
+
+.round-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.round-form-row input,
+.round-form-row select,
+.round-player-actions select,
+.round-score-simple-input {
+  height: 2.4rem;
+  border-radius: 0.78rem;
+  border: 1px solid var(--line);
+  padding: 0.42rem 0.65rem;
+  background: #fff;
+}
+
+.round-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.round-list-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.round-list-item span,
+.round-score-simple-head span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.round-player-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.round-score-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.round-score-meta span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.25rem 0.58rem;
+  background: rgba(255, 255, 255, 0.68);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.round-score-simple-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.round-score-simple-row {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.74);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.58rem;
+}
+
+.round-score-simple-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.round-score-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.round-score-simple-input {
+  width: 6.2rem;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.round-score-quick-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.round-map-section {
+  margin-top: 0.25rem;
+}
+
+.round-option-checkbox,
+.round-option-fixed {
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 0.6rem 0.7rem;
+}
+
+.round-toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.round-toggle-row input {
+  width: 1rem;
+  height: 1rem;
+}
+
 .admin-editor-collapsed-note {
   margin: 0;
   color: var(--muted);
@@ -674,6 +861,11 @@ h1 {
 
   .admin-layout,
   .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .round-layout,
+  .round-roster-grid {
     grid-template-columns: 1fr;
   }
 

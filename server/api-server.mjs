@@ -318,6 +318,9 @@ app.post('/api/rounds', async (req, res) => {
   const courseId = String(req.body?.courseId || '').trim()
   const name = String(req.body?.name || '').trim() || 'New Round'
   const gameType = String(req.body?.gameType || '').trim()
+  const teamsEnabledInput = req.body?.teamsEnabled
+  const teamsEnabled =
+    typeof teamsEnabledInput === 'boolean' ? teamsEnabledInput : gameType !== 'standard'
 
   if (!courseId) {
     res.status(400).json({ error: 'courseId is required' })
@@ -336,6 +339,7 @@ app.post('/api/rounds', async (req, res) => {
     courseId,
     name,
     gameType,
+    teamsEnabled,
     status: 'setup',
     createdAt: now,
     updatedAt: now,
