@@ -5,6 +5,16 @@ services:
     environment:
       - DATA_DIR=/app/data
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
+      - GLOBAL_ADMIN_EMAIL=${GLOBAL_ADMIN_EMAIL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-}
+      - SMTP_SECURE=${SMTP_SECURE:-}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_REPLY_TO=${SMTP_REPLY_TO:-}
+      - AUTH_MAGIC_LINK_TTL_MINUTES=${AUTH_MAGIC_LINK_TTL_MINUTES:-15}
+      - AUTH_SESSION_TTL_HOURS=${AUTH_SESSION_TTL_HOURS:-12}
     ports:
       - "8080:8080"
     volumes:

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { logoutAdminSession } from '../lib/adminAuth'
+import { getSmtpConfig, saveSmtpConfig, sendSmtpTest, type SmtpConfigPayload } from '../lib/adminSmtp'
 import { createCourse, deleteCourse, duplicateCourse, exportCourse, importCourse, listCourses, renameCourse, setDefaultCourse, type CourseSummary } from '../lib/storage'
 import { validateName } from '../lib/nameFilter'
 import type { Course } from '../types/course'
@@ -29,6 +31,18 @@ export const AdminPortalPage = () => {
   const [renameValue, setRenameValue] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [status, setStatus] = useState('')
+  const [smtpConfig, setSmtpConfig] = useState({
+    host: '',
+    port: 587,
+    secure: false,
+    username: '',
+    password: '',
+    from: '',
+    replyTo: '',
+  })
+  const [smtpInfo, setSmtpInfo] = useState<SmtpConfigPayload | null>(null)
+  const [smtpTestTo, setSmtpTestTo] = useState('')
+  const [smtpStatus, setSmtpStatus] = useState('')
 
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === selectedCourseId) ?? courses[0] ?? null,
@@ -64,6 +78,29 @@ export const AdminPortalPage = () => {
     }
 
     void load()
+  }, [])
+
+  useEffect(() => {
+    const loadSmtp = async () => {
+      try {
+        const payload = await getSmtpConfig()
+        setSmtpInfo(payload)
+        setSmtpConfig({
+          host: payload.config.host,
+          port: payload.config.port,
+          secure: payload.config.secure,
+          username: payload.config.username,
+          password: '',
+          from: payload.config.from,
+          replyTo: payload.config.replyTo,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to load SMTP settings.'
+        setSmtpStatus(message)
+      }
+    }
+
+    void loadSmtp()
   }, [])
 
   const refreshCourses = async (preferredId?: string) => {
@@ -186,6 +223,36 @@ export const AdminPortalPage = () => {
     }
   }
 
+  const handleSaveSmtp = async () => {
+    try {
+      const payload = await saveSmtpConfig(smtpConfig)
+      setSmtpInfo(payload)
+      setSmtpConfig((current) => ({ ...current, password: '' }))
+      setSmtpStatus('SMTP settings saved.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save SMTP settings.'
+      setSmtpStatus(message)
+    }
+  }
+
+  const handleSendSmtpTest = async () => {
+    try {
+      await sendSmtpTest(smtpTestTo)
+      setSmtpStatus(`SMTP test email sent to ${smtpTestTo}.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to send test email.'
+      setSmtpStatus(message)
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logoutAdminSession()
+    } finally {
+      navigate('/admin-login', { replace: true })
+    }
+  }
+
   return (
     <main className="page portal-page">
       <section className="portal-card portal-card-wide">
@@ -194,6 +261,12 @@ export const AdminPortalPage = () => {
         <p className="portal-copy">
           Manage stored courses from one place. Search, add, duplicate, import, export, rename, or remove a course before opening the editor.
         </p>
+
+        <div className="portal-actions-row">
+          <button type="button" className="chip" onClick={() => void handleLogout()}>
+            Sign Out
+          </button>
+        </div>
 
         <div className="portal-toolbar">
           <label className="portal-field portal-search" htmlFor="course-search">
@@ -334,6 +407,129 @@ export const AdminPortalPage = () => {
                   ? `Selected course ID: ${selectedCourse.id}`
                   : 'No course selected. Root will open the default course when one is set.'}
             </p>
+
+            <div className="portal-divider" />
+
+            <div className="portal-panel-head">
+              <div>
+                <p className="eyebrow">Email Delivery</p>
+                <h2>SMTP Configuration</h2>
+              </div>
+            </div>
+
+            <label className="portal-field" htmlFor="smtp-host">
+              SMTP host
+              <input
+                id="smtp-host"
+                value={smtpConfig.host}
+                onChange={(event) => setSmtpConfig((current) => ({ ...current, host: event.target.value }))}
+                placeholder="email-smtp.us-east-1.amazonaws.com"
+              />
+            </label>
+
+            <div className="portal-actions-row">
+              <label className="portal-field" htmlFor="smtp-port">
+                SMTP port
+                <input
+                  id="smtp-port"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={smtpConfig.port}
+                  onChange={(event) => setSmtpConfig((current) => ({ ...current, port: Number(event.target.value) || 0 }))}
+                />
+              </label>
+
+              <label className="portal-default-toggle">
+                <input
+                  type="checkbox"
+                  checked={smtpConfig.secure}
+                  onChange={(event) => setSmtpConfig((current) => ({ ...current, secure: event.target.checked }))}
+                />
+                <span>Use TLS/SSL (`secure`)</span>
+              </label>
+            </div>
+
+            <label className="portal-field" htmlFor="smtp-username">
+              SMTP username
+              <input
+                id="smtp-username"
+                value={smtpConfig.username}
+                onChange={(event) => setSmtpConfig((current) => ({ ...current, username: event.target.value }))}
+                placeholder="AKIA..."
+              />
+            </label>
+
+            <label className="portal-field" htmlFor="smtp-password">
+              SMTP password
+              <input
+                id="smtp-password"
+                type="password"
+                autoComplete="new-password"
+                value={smtpConfig.password}
+                onChange={(event) => setSmtpConfig((current) => ({ ...current, password: event.target.value }))}
+                placeholder={smtpInfo?.config.hasPassword ? 'Stored (leave blank to keep)' : 'Enter SMTP password'}
+              />
+            </label>
+
+            <label className="portal-field" htmlFor="smtp-from">
+              From email
+              <input
+                id="smtp-from"
+                type="email"
+                value={smtpConfig.from}
+                onChange={(event) => setSmtpConfig((current) => ({ ...current, from: event.target.value }))}
+                placeholder="noreply@yourdomain.com"
+              />
+            </label>
+
+            <label className="portal-field" htmlFor="smtp-reply-to">
+              Reply-to email (optional)
+              <input
+                id="smtp-reply-to"
+                type="email"
+                value={smtpConfig.replyTo}
+                onChange={(event) => setSmtpConfig((current) => ({ ...current, replyTo: event.target.value }))}
+                placeholder="support@yourdomain.com"
+              />
+            </label>
+
+            <div className="portal-actions-row">
+              <button type="button" className="chip" onClick={() => void handleSaveSmtp()}>
+                Save SMTP
+              </button>
+            </div>
+
+            <label className="portal-field" htmlFor="smtp-test-to">
+              Test recipient
+              <input
+                id="smtp-test-to"
+                type="email"
+                value={smtpTestTo}
+                onChange={(event) => setSmtpTestTo(event.target.value)}
+                placeholder="you@yourdomain.com"
+              />
+            </label>
+
+            <div className="portal-actions-row">
+              <button type="button" className="chip chip-install" onClick={() => void handleSendSmtpTest()} disabled={!smtpTestTo.trim()}>
+                Send Test Email
+              </button>
+            </div>
+
+            <p className="cache-status">
+              {smtpStatus
+                ? smtpStatus
+                : smtpInfo?.ready
+                  ? 'SMTP is configured and ready for magic-link delivery.'
+                  : 'SMTP is not fully configured yet.'}
+            </p>
+
+            {smtpInfo ? (
+              <p className="cache-status">
+                Active overrides from environment: {Object.entries(smtpInfo.envOverrides).filter(([, enabled]) => enabled).map(([key]) => key).join(', ') || 'none'}
+              </p>
+            ) : null}
           </section>
         </div>
       </section>

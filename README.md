@@ -77,6 +77,32 @@ Public URL note:
 
 Then open http://localhost:8080.
 
+## Admin Auth + SMTP
+
+Admin write actions now require a global-admin magic-link session.
+
+Set these environment variables (in `.env` for local dev or your runtime env):
+
+- `GLOBAL_ADMIN_EMAIL` (required for admin login)
+- `SMTP_HOST`
+- `SMTP_PORT` (for example `587`)
+- `SMTP_SECURE` (`true` for implicit TLS, usually `false` for STARTTLS on 587)
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_FROM` (sender address)
+- `SMTP_REPLY_TO` (optional)
+- `AUTH_MAGIC_LINK_TTL_MINUTES` (optional, default `15`)
+- `AUTH_SESSION_TTL_HOURS` (optional, default `12`)
+
+Flow:
+
+1. Open `/admin-login`.
+2. Enter `GLOBAL_ADMIN_EMAIL`.
+3. Click the magic link in email.
+4. Configure/test SMTP in Admin Portal if needed.
+
+SMTP settings can be edited in the Admin Portal and are stored in SQLite, but env values override stored settings at runtime.
+
 Container files:
 
 - Docker image build: `Dockerfile`
