@@ -22,6 +22,7 @@ export type Round = {
   courseId: string
   name: string
   gameType: GameType
+  teamsEnabled: boolean
   status: RoundStatus
   createdAt: string
   updatedAt: string
@@ -33,10 +34,40 @@ export type Round = {
   revision: number
 }
 
-export const gameTypeOptions: Array<{ value: GameType; label: string; description: string }> = [
-  { value: 'standard', label: 'Standard', description: 'Individual scoring by default.' },
-  { value: 'scramble', label: 'Scramble', description: 'Teams share the best shot.' },
-  { value: 'best-ball', label: 'Best ball', description: 'Best result on the card counts.' },
-  { value: 'alternate-shot', label: 'Alternate shot', description: 'Players take turns throwing.' },
-  { value: 'sixes', label: 'Sixes', description: 'Custom group play format.' },
+export const gameTypeOptions: Array<{
+  value: GameType
+  label: string
+  description: string
+  allowsOptionalTeams: boolean
+}> = [
+  {
+    value: 'standard',
+    label: 'Standard',
+    description: 'Individual scoring by default.',
+    allowsOptionalTeams: true,
+  },
+  {
+    value: 'scramble',
+    label: 'Scramble',
+    description: 'Teams share the best shot.',
+    allowsOptionalTeams: false,
+  },
+  {
+    value: 'best-ball',
+    label: 'Best ball',
+    description: 'Best result on the card counts.',
+    allowsOptionalTeams: false,
+  },
+  {
+    value: 'alternate-shot',
+    label: 'Alternate shot',
+    description: 'Players take turns throwing.',
+    allowsOptionalTeams: false,
+  },
+  {
+    value: 'sixes',
+    label: 'Sixes',
+    description: 'Custom group play format.',
+    allowsOptionalTeams: false,
+  },
 ]

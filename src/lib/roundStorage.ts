@@ -5,7 +5,8 @@ const API_BASE = '/api'
 
 const withDefaults = (round: Round): Round => ({
   ...round,
-  name: round.name.trim() || 'New Round'
+  name: round.name.trim() || 'New Round',
+  teamsEnabled: typeof round.teamsEnabled === 'boolean' ? round.teamsEnabled : round.gameType !== 'standard',
 })
 
 const parseJson = async <T>(response: Response): Promise<T> => {
@@ -102,6 +103,7 @@ export const createRound = async (input: {
   courseId: string
   name: string
   gameType: GameType
+  teamsEnabled: boolean
 }): Promise<Round> => {
   const response = await fetch(`${API_BASE}/rounds`, {
     method: 'POST',
@@ -113,6 +115,7 @@ export const createRound = async (input: {
       courseId: input.courseId,
       name: input.name,
       gameType: input.gameType,
+      teamsEnabled: input.teamsEnabled,
     }),
   })
 
@@ -217,4 +220,28 @@ export const deleteRound = async (roundId: string): Promise<void> => {
   }
 
   await deleteCachedRound(roundId)
+}
+
+export const importRoundFromSync = async (incomingRound: Round): Promise<Round> => {
+  const incoming = withDefaults(incomingRound)
+  const existing = await getCachedRound(incoming.id)
+
+  const merged = existing
+    ? withDefaults({
+      ...existing,
+      ...incoming,
+      ...mergeRoundScores(existing, incoming),
+      revision: Math.max(existing.revision, incoming.revision),
+      updatedAt: existing.updatedAt > incoming.updatedAt ? existing.updatedAt : incoming.updatedAt,
+    })
+    : incoming
+
+  await setCachedRound(merged)
+
+  try {
+    const saved = await saveRound(merged)
+    return saved
+  } catch {
+    return merged
+  }
 }

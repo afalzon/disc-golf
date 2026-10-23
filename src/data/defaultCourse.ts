@@ -75,6 +75,20 @@ export const defaultCourse: Course = {
       notes: 'Covered seating area.',
     },
     {
+      id: 'poi-start',
+      name: 'Start',
+      kind: 'start',
+      position: { lat: -37.8145, lng: 144.9623 },
+      notes: 'Round start marker near Hole 1 tee.',
+    },
+    {
+      id: 'poi-finish',
+      name: 'Finish',
+      kind: 'finish',
+      position: { lat: -37.8139, lng: 144.9651 },
+      notes: 'Round finish marker near the final basket.',
+    },
+    {
       id: 'poi-other',
       name: 'Notice Board',
       kind: 'other',

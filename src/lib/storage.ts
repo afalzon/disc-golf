@@ -10,6 +10,7 @@ import {
   setCachedDefaultCourseId,
   upsertCachedCourseSummary,
 } from './syncCache'
+import { getAdminAuthHeaders } from './adminSession'
 import type { Course } from '../types/course'
 
 export type CourseSummary = {
@@ -42,6 +43,7 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...getAdminAuthHeaders(),
       ...(init?.headers ?? {}),
     },
     cache: 'no-store',
@@ -54,6 +56,7 @@ const requestVoid = async (path: string, init?: RequestInit): Promise<void> => {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
+      ...getAdminAuthHeaders(),
       ...(init?.headers ?? {}),
     },
     cache: 'no-store',
@@ -86,6 +89,9 @@ export const setDefaultCourse = async (courseId: string): Promise<void> => {
 export const findCourse = async (courseId: string): Promise<Course | null> => {
   try {
     const response = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}`, {
+      headers: {
+        ...getAdminAuthHeaders(),
+      },
       cache: 'no-store',
     })
 
