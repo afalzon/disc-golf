@@ -36,6 +36,75 @@ const ClickCapture = ({ enabled, onPoint }: ClickCaptureProps) => {
   return null
 }
 
+type CoordinateInputsProps = {
+  label: string
+  value: LatLng
+  onChange: (point: LatLng) => void
+  className?: string
+}
+
+const CoordinateInputs = ({ label, value, onChange, className = '' }: CoordinateInputsProps) => {
+  const [latitude, setLatitude] = useState(String(value.lat))
+  const [longitude, setLongitude] = useState(String(value.lng))
+
+  useEffect(() => {
+    setLatitude(String(value.lat))
+    setLongitude(String(value.lng))
+  }, [value.lat, value.lng])
+
+  const commitLatitude = () => {
+    const nextLatitude = Number(latitude)
+    if (!latitude.trim() || !Number.isFinite(nextLatitude) || nextLatitude < -90 || nextLatitude > 90) {
+      setLatitude(String(value.lat))
+      return
+    }
+
+    onChange({ ...value, lat: nextLatitude })
+  }
+
+  const commitLongitude = () => {
+    const nextLongitude = Number(longitude)
+    if (!longitude.trim() || !Number.isFinite(nextLongitude) || nextLongitude < -180 || nextLongitude > 180) {
+      setLongitude(String(value.lng))
+      return
+    }
+
+    onChange({ ...value, lng: nextLongitude })
+  }
+
+  return (
+    <div className={`admin-coordinates admin-coordinate-editor ${className}`}>
+      <p className="eyebrow">{label}</p>
+      <div className="admin-coordinate-inputs">
+        <label>
+          Latitude
+          <input
+            type="number"
+            min="-90"
+            max="90"
+            step="any"
+            value={latitude}
+            onChange={(event) => setLatitude(event.target.value)}
+            onBlur={commitLatitude}
+          />
+        </label>
+        <label>
+          Longitude
+          <input
+            type="number"
+            min="-180"
+            max="180"
+            step="any"
+            value={longitude}
+            onChange={(event) => setLongitude(event.target.value)}
+            onBlur={commitLongitude}
+          />
+        </label>
+      </div>
+    </div>
+  )
+}
+
 export const AdminPage = () => {
   const { courseId } = useParams()
   const [course, setCourse] = useState<Course | null>(null)
@@ -924,18 +993,18 @@ export const AdminPage = () => {
                   placeholder="Wind, landing zone, obstructions..."
                 />
               </label>
-              <div className="admin-coordinates admin-coordinates-tee">
-                <p className="eyebrow">Tee coordinates</p>
-                <span>
-                  {activeHole.tee.lat.toFixed(5)}, {activeHole.tee.lng.toFixed(5)}
-                </span>
-              </div>
-              <div className="admin-coordinates admin-coordinates-pin">
-                <p className="eyebrow">Pin coordinates</p>
-                <span>
-                  {activeHole.pin.lat.toFixed(5)}, {activeHole.pin.lng.toFixed(5)}
-                </span>
-              </div>
+              <CoordinateInputs
+                label="Tee coordinates"
+                value={activeHole.tee}
+                onChange={(point) => updateHole(activeHole.id, 'tee', point)}
+                className="admin-coordinates-tee"
+              />
+              <CoordinateInputs
+                label="Pin coordinates"
+                value={activeHole.pin}
+                onChange={(point) => updateHole(activeHole.id, 'pin', point)}
+                className="admin-coordinates-pin"
+              />
               <div className="admin-qr-block">
                 <p className="eyebrow">Hole QR target</p>
                 <input
@@ -1013,9 +1082,12 @@ export const AdminPage = () => {
                 <div className="admin-path-waypoints">
                   {activePath.points.map((point, index) => (
                     <div key={`${activePath.id}-point-${index}`} className="admin-waypoint-row">
-                      <span>
-                        Waypoint {index + 1}: {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
-                      </span>
+                      <CoordinateInputs
+                        label={`Waypoint ${index + 1}`}
+                        value={point}
+                        onChange={(nextPoint) => updatePathPoint(index, nextPoint)}
+                        className="admin-waypoint-coordinate-editor"
+                      />
                       <div className="admin-waypoint-actions">
                         <button
                           type="button"
@@ -1109,12 +1181,11 @@ export const AdminPage = () => {
                     placeholder="Parking, restroom, water, shelter, start, finish, etc."
                   />
                 </label>
-                <div className="admin-coordinates">
-                  <p className="eyebrow">POI coordinates</p>
-                  <span>
-                    {activePoi.position.lat.toFixed(5)}, {activePoi.position.lng.toFixed(5)}
-                  </span>
-                </div>
+                <CoordinateInputs
+                  label="POI coordinates"
+                  value={activePoi.position}
+                  onChange={(point) => updatePoiPosition(activePoi.id, point)}
+                />
               </div>
             ) : activeEditor !== 'poi' ? (
               <p className="admin-editor-collapsed-note">POI editor collapsed. Select a POI or open this panel to edit.</p>

@@ -409,6 +409,33 @@ h1 {
   gap: 0.35rem;
 }
 
+.admin-coordinate-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.admin-coordinate-inputs label {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  font-size: 0.82rem;
+}
+
+.admin-coordinate-inputs input {
+  width: 100%;
+  min-width: 0;
+  height: 2.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  padding: 0.4rem 0.55rem;
+  background: #fff;
+}
+
+.admin-waypoint-coordinate-editor {
+  flex: 1 1 18rem;
+}
+
 .admin-coordinates-tee {
   border-color: color-mix(in srgb, #1f9d55 42%, var(--line));
   background: linear-gradient(145deg, rgba(31, 157, 85, 0.14), rgba(255, 255, 255, 0.9));
