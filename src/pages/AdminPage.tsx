@@ -44,32 +44,28 @@ type CoordinateInputsProps = {
 }
 
 const CoordinateInputs = ({ label, value, onChange, className = '' }: CoordinateInputsProps) => {
-  const [latitude, setLatitude] = useState(String(value.lat))
-  const [longitude, setLongitude] = useState(String(value.lng))
-
-  useEffect(() => {
-    setLatitude(String(value.lat))
-    setLongitude(String(value.lng))
-  }, [value.lat, value.lng])
-
-  const commitLatitude = () => {
-    const nextLatitude = Number(latitude)
-    if (!latitude.trim() || !Number.isFinite(nextLatitude) || nextLatitude < -90 || nextLatitude > 90) {
-      setLatitude(String(value.lat))
+  const commitLatitude = (input: HTMLInputElement) => {
+    const nextLatitude = Number(input.value)
+    if (!input.value.trim() || !Number.isFinite(nextLatitude) || nextLatitude < -90 || nextLatitude > 90) {
+      input.value = String(value.lat)
       return
     }
 
-    onChange({ ...value, lat: nextLatitude })
+    if (nextLatitude !== value.lat) {
+      onChange({ ...value, lat: nextLatitude })
+    }
   }
 
-  const commitLongitude = () => {
-    const nextLongitude = Number(longitude)
-    if (!longitude.trim() || !Number.isFinite(nextLongitude) || nextLongitude < -180 || nextLongitude > 180) {
-      setLongitude(String(value.lng))
+  const commitLongitude = (input: HTMLInputElement) => {
+    const nextLongitude = Number(input.value)
+    if (!input.value.trim() || !Number.isFinite(nextLongitude) || nextLongitude < -180 || nextLongitude > 180) {
+      input.value = String(value.lng)
       return
     }
 
-    onChange({ ...value, lng: nextLongitude })
+    if (nextLongitude !== value.lng) {
+      onChange({ ...value, lng: nextLongitude })
+    }
   }
 
   return (
@@ -83,9 +79,8 @@ const CoordinateInputs = ({ label, value, onChange, className = '' }: Coordinate
             min="-90"
             max="90"
             step="any"
-            value={latitude}
-            onChange={(event) => setLatitude(event.target.value)}
-            onBlur={commitLatitude}
+            defaultValue={value.lat}
+            onBlur={(event) => commitLatitude(event.currentTarget)}
           />
         </label>
         <label>
@@ -95,9 +90,8 @@ const CoordinateInputs = ({ label, value, onChange, className = '' }: Coordinate
             min="-180"
             max="180"
             step="any"
-            value={longitude}
-            onChange={(event) => setLongitude(event.target.value)}
-            onBlur={commitLongitude}
+            defaultValue={value.lng}
+            onBlur={(event) => commitLongitude(event.currentTarget)}
           />
         </label>
       </div>
@@ -994,12 +988,14 @@ export const AdminPage = () => {
                 />
               </label>
               <CoordinateInputs
+                key={`${activeHole.id}-tee-${activeHole.tee.lat}-${activeHole.tee.lng}`}
                 label="Tee coordinates"
                 value={activeHole.tee}
                 onChange={(point) => updateHole(activeHole.id, 'tee', point)}
                 className="admin-coordinates-tee"
               />
               <CoordinateInputs
+                key={`${activeHole.id}-pin-${activeHole.pin.lat}-${activeHole.pin.lng}`}
                 label="Pin coordinates"
                 value={activeHole.pin}
                 onChange={(point) => updateHole(activeHole.id, 'pin', point)}
@@ -1083,6 +1079,7 @@ export const AdminPage = () => {
                   {activePath.points.map((point, index) => (
                     <div key={`${activePath.id}-point-${index}`} className="admin-waypoint-row">
                       <CoordinateInputs
+                        key={`${activePath.id}-${index}-${point.lat}-${point.lng}`}
                         label={`Waypoint ${index + 1}`}
                         value={point}
                         onChange={(nextPoint) => updatePathPoint(index, nextPoint)}
@@ -1182,6 +1179,7 @@ export const AdminPage = () => {
                   />
                 </label>
                 <CoordinateInputs
+                  key={`${activePoi.id}-${activePoi.position.lat}-${activePoi.position.lng}`}
                   label="POI coordinates"
                   value={activePoi.position}
                   onChange={(point) => updatePoiPosition(activePoi.id, point)}
